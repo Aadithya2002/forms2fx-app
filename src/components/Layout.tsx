@@ -1,0 +1,261 @@
+import { Outlet, Link, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import {
+    LayoutDashboard,
+    Upload,
+    Layers,
+    Zap,
+    Map,
+    ChevronLeft,
+    ChevronRight,
+    FileCode2,
+    Database,
+    LayoutGrid,
+    MonitorPlay,
+    FileText,
+    Menu,
+    X,
+} from 'lucide-react';
+import { useAnalysisStore } from '../store/analysisStore';
+
+const mainNavItems = [
+    { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
+    { to: '/upload', icon: Upload, label: 'Upload XML' },
+];
+
+export default function Layout() {
+    const location = useLocation();
+    const [collapsed, setCollapsed] = useState(false);
+    const [mobileOpen, setMobileOpen] = useState(false);
+    const { currentFile, currentAnalysis } = useAnalysisStore();
+
+    const isAnalysisRoute = location.pathname.includes('/analysis/');
+
+    // Close mobile menu on route change
+    useEffect(() => {
+        setMobileOpen(false);
+    }, [location.pathname]);
+
+    const analysisNavItems = currentFile
+        ? [
+            {
+                to: `/analysis/${currentFile.id}`,
+                icon: FileCode2,
+                label: 'Overview',
+            },
+            {
+                to: `/analysis/${currentFile.id}/designer`,
+                icon: MonitorPlay,
+                label: 'Page Designer',
+                highlight: true,
+            },
+            {
+                to: `/analysis/${currentFile.id}/layout`,
+                icon: LayoutGrid,
+                label: 'UI Layout',
+            },
+            {
+                to: `/analysis/${currentFile.id}/blueprint`,
+                icon: FileText,
+                label: 'Blueprints',
+            },
+            {
+                to: `/analysis/${currentFile.id}/triggers`,
+                icon: Zap,
+                label: 'Triggers',
+            },
+            {
+                to: `/analysis/${currentFile.id}/mapping`,
+                icon: Map,
+                label: 'APEX Mapping',
+            },
+        ]
+        : [];
+
+    const SidebarContent = () => (
+        <>
+            {/* Navigation */}
+            <nav className="flex-1 p-3 space-y-6 overflow-y-auto">
+                {/* Main Navigation */}
+                <div>
+                    {!collapsed && (
+                        <p className="px-3 mb-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                            Main
+                        </p>
+                    )}
+                    <ul className="space-y-1">
+                        {mainNavItems.map((item) => (
+                            <li key={item.to}>
+                                <Link
+                                    to={item.to}
+                                    className={`sidebar-item ${location.pathname === item.to ? 'sidebar-item-active' : ''
+                                        } ${collapsed ? 'justify-center' : ''}`}
+                                    title={collapsed ? item.label : undefined}
+                                >
+                                    <item.icon className="w-5 h-5 flex-shrink-0" />
+                                    {!collapsed && <span>{item.label}</span>}
+                                </Link>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+
+                {/* Analysis Navigation (shown when file is selected) */}
+                {isAnalysisRoute && currentFile && (
+                    <div>
+                        {!collapsed && (
+                            <p className="px-3 mb-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                                Analysis
+                            </p>
+                        )}
+                        <ul className="space-y-1">
+                            {analysisNavItems.map((item) => (
+                                <li key={item.to}>
+                                    <Link
+                                        to={item.to}
+                                        className={`sidebar-item ${location.pathname === item.to ? 'sidebar-item-active' : ''
+                                            } ${collapsed ? 'justify-center' : ''}`}
+                                        title={collapsed ? item.label : undefined}
+                                    >
+                                        <item.icon className="w-5 h-5 flex-shrink-0" />
+                                        {!collapsed && <span>{item.label}</span>}
+                                    </Link>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+
+                {/* Blocks List (shown when analysis is available) */}
+                {isAnalysisRoute && currentAnalysis && currentAnalysis.blocks.length > 0 && (
+                    <div>
+                        {!collapsed && (
+                            <p className="px-3 mb-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                                Blocks ({currentAnalysis.blocks.length})
+                            </p>
+                        )}
+                        <ul className="space-y-1 max-h-64 overflow-y-auto">
+                            {currentAnalysis.blocks.slice(0, 15).map((block) => (
+                                <li key={block.name}>
+                                    <Link
+                                        to={`/analysis/${currentFile?.id}/blocks/${block.name}`}
+                                        className={`sidebar-item text-xs ${location.pathname.includes(`/blocks/${block.name}`)
+                                            ? 'sidebar-item-active'
+                                            : ''
+                                            } ${collapsed ? 'justify-center' : ''}`}
+                                        title={collapsed ? block.name : undefined}
+                                    >
+                                        <Layers className="w-4 h-4 flex-shrink-0" />
+                                        {!collapsed && (
+                                            <span className="truncate">{block.name}</span>
+                                        )}
+                                    </Link>
+                                </li>
+                            ))}
+                            {currentAnalysis.blocks.length > 15 && !collapsed && (
+                                <li className="px-3 py-1 text-xs text-slate-400">
+                                    +{currentAnalysis.blocks.length - 15} more
+                                </li>
+                            )}
+                        </ul>
+                    </div>
+                )}
+            </nav>
+
+            {/* Footer */}
+            {!collapsed && (
+                <div className="p-4 border-t border-slate-200">
+                    <p className="text-xs text-slate-400 text-center">
+                        Forms to APEX v0.1
+                    </p>
+                </div>
+            )}
+        </>
+    );
+
+    return (
+        <div className="min-h-screen bg-apex-bg flex">
+            {/* Mobile Header */}
+            <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-white border-b border-slate-200 flex items-center px-4 z-40">
+                <button
+                    onClick={() => setMobileOpen(true)}
+                    className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg"
+                >
+                    <Menu className="w-6 h-6" />
+                </button>
+                <div className="flex items-center gap-2 ml-3">
+                    <div className="w-7 h-7 bg-gradient-to-br from-primary-500 to-primary-700 rounded-lg flex items-center justify-center">
+                        <Database className="w-4 h-4 text-white" />
+                    </div>
+                    <span className="font-semibold text-slate-900">Forms2APEX</span>
+                </div>
+            </div>
+
+            {/* Mobile Sidebar Overlay */}
+            {mobileOpen && (
+                <div
+                    className="md:hidden fixed inset-0 bg-black/50 z-40"
+                    onClick={() => setMobileOpen(false)}
+                />
+            )}
+
+            {/* Mobile Sidebar */}
+            <aside
+                className={`md:hidden fixed top-0 left-0 h-full w-64 bg-white border-r border-slate-200 flex flex-col z-50 transform transition-transform duration-300 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'
+                    }`}
+            >
+                {/* Mobile Logo */}
+                <div className="h-14 flex items-center justify-between px-4 border-b border-slate-200">
+                    <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-700 rounded-lg flex items-center justify-center">
+                            <Database className="w-5 h-5 text-white" />
+                        </div>
+                        <span className="font-semibold text-slate-900">Forms2APEX</span>
+                    </div>
+                    <button
+                        onClick={() => setMobileOpen(false)}
+                        className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg"
+                    >
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+                <SidebarContent />
+            </aside>
+
+            {/* Desktop Sidebar */}
+            <aside
+                className={`hidden md:flex ${collapsed ? 'w-16' : 'w-64'
+                    } bg-white border-r border-slate-200 flex-col transition-all duration-300 ease-in-out`}
+            >
+                {/* Logo */}
+                <div className="h-16 flex items-center justify-between px-4 border-b border-slate-200">
+                    {!collapsed && (
+                        <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-700 rounded-lg flex items-center justify-center">
+                                <Database className="w-5 h-5 text-white" />
+                            </div>
+                            <span className="font-semibold text-slate-900">Forms2APEX</span>
+                        </div>
+                    )}
+                    <button
+                        onClick={() => setCollapsed(!collapsed)}
+                        className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                    >
+                        {collapsed ? (
+                            <ChevronRight className="w-5 h-5" />
+                        ) : (
+                            <ChevronLeft className="w-5 h-5" />
+                        )}
+                    </button>
+                </div>
+                <SidebarContent />
+            </aside>
+
+            {/* Main Content */}
+            <main className="flex-1 flex flex-col min-w-0 pt-14 md:pt-0">
+                <Outlet />
+            </main>
+        </div>
+    );
+}
+
