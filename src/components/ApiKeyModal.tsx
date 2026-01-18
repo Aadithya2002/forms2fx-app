@@ -1,23 +1,50 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Key, Loader2, Check, AlertCircle } from 'lucide-react';
-import { getApiKey, setApiKey, testApiKey } from '../services/geminiService';
+import { X, Key, Loader2, Check, AlertCircle, ShieldCheck } from 'lucide-react';
+import { testApiKey } from '../services/geminiService';
 import { useAnalysisStore } from '../store/analysisStore';
+import { useAuth } from '../contexts/AuthContext';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from '../services/firebase';
+import { encryptApiKey, decryptApiKey } from '../services/cryptoService';
 
 export default function ApiKeyModal() {
-    const { showApiKeyModal, setShowApiKeyModal } = useAnalysisStore();
+    const { showApiKeyModal, setShowApiKeyModal, apiKey, setApiKey } = useAnalysisStore();
+    const { user } = useAuth();
     const [key, setKey] = useState('');
     const [testing, setTesting] = useState(false);
+    const [saving, setSaving] = useState(false);
     const [testResult, setTestResult] = useState<{ valid: boolean; error?: string } | null>(null);
 
+    // Load key from store or Firestore when modal opens
     useEffect(() => {
         if (showApiKeyModal) {
-            const existingKey = getApiKey();
-            if (existingKey) {
-                setKey(existingKey);
+            setKey(apiKey || '');
+            setTestResult(null);
+
+            // Try to fetch from Firestore if not in store
+            if (!apiKey && user) {
+                const fetchKey = async () => {
+                    try {
+                        const userDoc = await getDoc(doc(db, 'users', user.uid));
+                        if (userDoc.exists() && userDoc.data().settings?.encryptedApiKey) {
+                            const decrypted = await decryptApiKey(
+                                userDoc.data().settings.encryptedApiKey,
+                                user.uid
+                            );
+                            if (decrypted) {
+                                setKey(decrypted);
+                                setApiKey(decrypted);
+                            }
+                        }
+                    } catch (err) {
+                        console.error('Error fetching API key:', err);
+                    }
+                };
+                fetchKey();
             }
         }
-    }, [showApiKeyModal]);
+    }, [showApiKeyModal, apiKey, user, setApiKey]);
 
     const handleTest = async () => {
         if (!key.trim()) return;
@@ -30,10 +57,30 @@ export default function ApiKeyModal() {
         setTesting(false);
     };
 
-    const handleSave = () => {
-        if (!key.trim()) return;
-        setApiKey(key.trim());
-        setShowApiKeyModal(false);
+    const handleSave = async () => {
+        if (!key.trim() || !user) return;
+
+        setSaving(true);
+        try {
+            // Update store
+            setApiKey(key.trim());
+
+            // Encrypt and save to Firestore
+            const encryptedKey = await encryptApiKey(key.trim(), user.uid);
+            await setDoc(doc(db, 'users', user.uid), {
+                settings: {
+                    encryptedApiKey: encryptedKey,
+                    updatedAt: new Date()
+                }
+            }, { merge: true });
+
+            setShowApiKeyModal(false);
+        } catch (err) {
+            console.error('Error saving API key:', err);
+            setTestResult({ valid: false, error: 'Failed to save securely. Please try again.' });
+        } finally {
+            setSaving(false);
+        }
     };
 
     if (!showApiKeyModal) return null;
@@ -101,15 +148,15 @@ export default function ApiKeyModal() {
                             >
                                 Google AI Studio
                             </a>
-                            . Your key is stored locally in your browser only.
+                            . Your key is encrypted before storage and never shared.
                         </p>
 
                         {/* Test Result */}
                         {testResult && (
                             <div
                                 className={`p-3 rounded-lg flex items-center gap-2 ${testResult.valid
-                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                        : 'bg-rose-50 text-rose-700 border border-rose-200'
+                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                    : 'bg-rose-50 text-rose-700 border border-rose-200'
                                     }`}
                             >
                                 {testResult.valid ? (
@@ -148,7 +195,17 @@ export default function ApiKeyModal() {
                             disabled={!key.trim()}
                             className="px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            Save Key
+                            {saving ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Saving...
+                                </>
+                            ) : (
+                                <>
+                                    <ShieldCheck className="w-4 h-4" />
+                                    Save Securely
+                                </>
+                            )}
                         </button>
                     </div>
                 </motion.div>

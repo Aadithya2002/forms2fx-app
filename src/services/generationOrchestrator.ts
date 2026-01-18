@@ -4,6 +4,7 @@ import type {
     GenerationResult,
     CodeChunk
 } from '../types/generation';
+import { useAnalysisStore } from '../store/analysisStore';
 import { generateWithRetry } from './geminiService';
 import { analyzeCode, assembleChunks } from './codeChunker';
 import {
@@ -101,6 +102,12 @@ export async function generateForTrigger(
             message: 'Analyzing code structure...'
         });
 
+        // Get API key from store
+        const { apiKey } = useAnalysisStore.getState();
+        if (!apiKey) {
+            throw new Error('No API key configured. Please add one in AI settings.');
+        }
+
         const analysis = analyzeCode(triggerCode);
 
         if (analysis.strategy === 'single') {
@@ -116,6 +123,7 @@ export async function generateForTrigger(
             const result = await generateWithRetry(
                 prompt,
                 SYSTEM_PROMPT,
+                apiKey,
                 3,
                 (msg) => onProgress?.({
                     status: 'generating',
@@ -191,6 +199,11 @@ export async function generateForProgramUnit(
             message: 'Analyzing program unit structure...'
         });
 
+        const { apiKey } = useAnalysisStore.getState();
+        if (!apiKey) {
+            throw new Error('No API key configured. Please add one in AI settings.');
+        }
+
         const analysis = analyzeCode(unitCode);
 
         if (analysis.strategy === 'single') {
@@ -205,6 +218,7 @@ export async function generateForProgramUnit(
             const result = await generateWithRetry(
                 prompt,
                 SYSTEM_PROMPT,
+                apiKey,
                 3,
                 (msg) => onProgress?.({
                     status: 'generating',
@@ -279,6 +293,11 @@ async function generateChunked(
         message: `Large code block - generating in ${chunks.length} chunks...`
     });
 
+    const { apiKey } = useAnalysisStore.getState();
+    if (!apiKey) {
+        throw new Error('No API key configured. Please add one in AI settings.');
+    }
+
     for (let i = 0; i < chunks.length; i++) {
         const chunk = chunks[i];
 
@@ -301,6 +320,7 @@ async function generateChunked(
         const result = await generateWithRetry(
             prompt,
             SYSTEM_PROMPT,
+            apiKey,
             3,
             (msg) => onProgress?.({
                 status: 'generating',

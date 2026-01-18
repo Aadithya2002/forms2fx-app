@@ -20,6 +20,7 @@ interface AnalysisStore {
     generatedCode: Record<string, string>; // Map of trigger/unit name -> generated code
     generatedExplanations: Record<string, string>; // Map of trigger/unit name -> explanation
     showApiKeyModal: boolean;
+    apiKey: string | null;
 
     // File actions
     addFile: (file: UploadedFile) => void;
@@ -39,6 +40,7 @@ interface AnalysisStore {
     setGeneratedCode: (name: string, code: string, explanation?: string) => void;
     clearGeneratedCode: (name: string) => void;
     setShowApiKeyModal: (show: boolean) => void;
+    setApiKey: (key: string | null) => void;
 
     // UI actions
     toggleSidebar: () => void;
@@ -64,6 +66,7 @@ const initialState = {
     generatedCode: {},
     generatedExplanations: {},
     showApiKeyModal: false,
+    apiKey: null,
 };
 
 export const useAnalysisStore = create<AnalysisStore>((set) => ({
@@ -102,6 +105,7 @@ export const useAnalysisStore = create<AnalysisStore>((set) => ({
             knowledgeContext: null,
             generatedCode: {},
             generatedExplanations: {},
+            // Keep apiKey when switching files
         }),
 
     setAnalysis: (analysis) =>
@@ -150,6 +154,9 @@ export const useAnalysisStore = create<AnalysisStore>((set) => ({
 
     setShowApiKeyModal: (show) =>
         set({ showApiKeyModal: show }),
+
+    setApiKey: (key) =>
+        set({ apiKey: key }),
 
     toggleSidebar: () =>
         set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),

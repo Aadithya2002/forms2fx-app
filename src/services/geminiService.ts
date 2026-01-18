@@ -7,24 +7,10 @@
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
 /**
- * Get API key from localStorage
- */
-export function getApiKey(): string | null {
-    return localStorage.getItem('gemini_api_key');
-}
-
-/**
- * Set API key in localStorage
- */
-export function setApiKey(key: string): void {
-    localStorage.setItem('gemini_api_key', key);
-}
-
-/**
- * Check if API key exists
+ * Check if API key exists (checked via store)
  */
 export function hasApiKey(): boolean {
-    return !!getApiKey();
+    return !!localStorage.getItem('gemini_api_key');
 }
 
 /**
@@ -65,12 +51,11 @@ export async function testApiKey(apiKey: string): Promise<{ valid: boolean; erro
 export async function generateApexCode(
     prompt: string,
     systemPrompt: string,
+    apiKey: string, // Require API key to be passed in
     onProgress?: (message: string) => void
 ): Promise<{ success: boolean; code: string; error?: string; tokensUsed?: number }> {
-    const apiKey = getApiKey();
-
     if (!apiKey) {
-        return { success: false, code: '', error: 'No API key configured' };
+        return { success: false, code: '', error: 'No API key provided' };
     }
 
     onProgress?.('Connecting to Gemini API...');
@@ -145,6 +130,7 @@ export async function generateApexCode(
 export async function generateWithRetry(
     prompt: string,
     systemPrompt: string,
+    apiKey: string,
     maxRetries: number = 3,
     onProgress?: (message: string) => void
 ): Promise<{ success: boolean; code: string; error?: string }> {
@@ -153,7 +139,7 @@ export async function generateWithRetry(
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         onProgress?.(`Attempt ${attempt}/${maxRetries}...`);
 
-        const result = await generateApexCode(prompt, systemPrompt, onProgress);
+        const result = await generateApexCode(prompt, systemPrompt, apiKey, onProgress);
 
         if (result.success) {
             return result;
