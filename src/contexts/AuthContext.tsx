@@ -5,9 +5,11 @@ import {
     signInWithEmailAndPassword,
     signOut,
     onAuthStateChanged,
-    sendPasswordResetEmail
+    sendPasswordResetEmail,
+    GoogleAuthProvider,
+    signInWithPopup
 } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../services/firebase';
 
 interface AuthContextType {
@@ -15,6 +17,7 @@ interface AuthContextType {
     loading: boolean;
     signUp: (email: string, password: string) => Promise<void>;
     login: (email: string, password: string) => Promise<void>;
+    loginWithGoogle: () => Promise<void>;
     logout: () => Promise<void>;
     resetPassword: (email: string) => Promise<void>;
 }
@@ -61,6 +64,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
         await signInWithEmailAndPassword(auth, email, password);
     };
 
+    const loginWithGoogle = async () => {
+        const provider = new GoogleAuthProvider();
+        const userCredential = await signInWithPopup(auth, provider);
+
+        // Create user document if it doesn't exist
+        const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
+        if (!userDoc.exists()) {
+            await setDoc(doc(db, 'users', userCredential.user.uid), {
+                email: userCredential.user.email,
+                createdAt: serverTimestamp(),
+                settings: {}
+            });
+        }
+    };
+
     const logout = async () => {
         await signOut(auth);
     };
@@ -74,6 +92,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         loading,
         signUp,
         login,
+        loginWithGoogle,
         logout,
         resetPassword
     };
