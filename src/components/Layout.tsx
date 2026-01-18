@@ -26,6 +26,7 @@ import {
 import { useAnalysisStore } from '../store/analysisStore';
 import { hasApiKey } from '../services/geminiService';
 import { useAuth } from '../contexts/AuthContext';
+import { useApiKeySync } from '../hooks/useApiKeySync';
 
 const mainNavItems = [
     { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -33,6 +34,7 @@ const mainNavItems = [
 ];
 
 export default function Layout() {
+    useApiKeySync(); // Sync API key from Firestore
     const location = useLocation();
     const [collapsed, setCollapsed] = useState(false);
     const [mobileOpen, setMobileOpen] = useState(false);
