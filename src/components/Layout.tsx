@@ -20,9 +20,12 @@ import {
     Gauge,
     Key,
     Sparkles,
+    LogOut,
+    User,
 } from 'lucide-react';
 import { useAnalysisStore } from '../store/analysisStore';
 import { hasApiKey } from '../services/geminiService';
+import { useAuth } from '../contexts/AuthContext';
 
 const mainNavItems = [
     { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -35,6 +38,7 @@ export default function Layout() {
     const [mobileOpen, setMobileOpen] = useState(false);
     const { currentFile, currentAnalysis, setShowApiKeyModal } = useAnalysisStore();
     const apiKeyConfigured = hasApiKey();
+    const { user, logout } = useAuth();
 
     const isAnalysisRoute = location.pathname.includes('/analysis/');
 
@@ -209,6 +213,36 @@ export default function Layout() {
                         </>
                     )}
                 </button>
+            </div>
+
+            {/* User Profile */}
+            <div className={`p-3 border-t border-slate-200 ${collapsed ? 'flex flex-col items-center gap-2' : ''}`}>
+                {user && (
+                    <div className={`flex ${collapsed ? 'flex-col items-center gap-2' : 'items-center justify-between'}`}>
+                        <div className={`flex items-center gap-2 ${collapsed ? 'justify-center' : ''}`}>
+                            <div className="w-8 h-8 bg-gradient-to-br from-violet-500 to-purple-600 rounded-full flex items-center justify-center">
+                                <User className="w-4 h-4 text-white" />
+                            </div>
+                            {!collapsed && (
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-medium text-slate-700 truncate">
+                                        {user.email?.split('@')[0]}
+                                    </p>
+                                    <p className="text-xs text-slate-400 truncate">
+                                        {user.email}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                        <button
+                            onClick={logout}
+                            className={`p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors ${collapsed ? '' : 'ml-2'}`}
+                            title="Sign out"
+                        >
+                            <LogOut className="w-4 h-4" />
+                        </button>
+                    </div>
+                )}
             </div>
 
             {/* Footer */}
