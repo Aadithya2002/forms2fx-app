@@ -52,12 +52,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const signUp = async (email: string, password: string) => {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
 
-        // Create user document in Firestore
-        await setDoc(doc(db, 'users', userCredential.user.uid), {
-            email: userCredential.user.email,
-            createdAt: serverTimestamp(),
-            settings: {}
-        });
+        // Create user document in Firestore (non-blocking)
+        try {
+            await setDoc(doc(db, 'users', userCredential.user.uid), {
+                email: userCredential.user.email,
+                createdAt: serverTimestamp(),
+                settings: {}
+            });
+        } catch (error) {
+            console.error('Error creating user profile in Firestore:', error);
+            // Don't fail the signup if profile creation fails - we can try again later
+        }
     };
 
     const login = async (email: string, password: string) => {
@@ -68,14 +73,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const provider = new GoogleAuthProvider();
         const userCredential = await signInWithPopup(auth, provider);
 
-        // Create user document if it doesn't exist
-        const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
-        if (!userDoc.exists()) {
-            await setDoc(doc(db, 'users', userCredential.user.uid), {
-                email: userCredential.user.email,
-                createdAt: serverTimestamp(),
-                settings: {}
-            });
+        // Create user document if it doesn't exist (non-blocking)
+        try {
+            const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
+            if (!userDoc.exists()) {
+                await setDoc(doc(db, 'users', userCredential.user.uid), {
+                    email: userCredential.user.email,
+                    createdAt: serverTimestamp(),
+                    settings: {}
+                });
+            }
+        } catch (error) {
+            console.error('Error checking/creating user profile in Firestore:', error);
+            // Proceed with login even if DB check fails
         }
     };
 
