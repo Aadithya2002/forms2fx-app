@@ -19,6 +19,11 @@ export interface FormModule {
     recordGroups: RecordGroup[];
     // UI Layout Intelligence
     uiStructure: UIStructure;
+    // Program Unit Intelligence
+    programUnitsEnriched?: ProgramUnitEnriched[];
+    triggersAnalyzed?: TriggerAnalysis[];
+    formLogicHierarchy?: FormLogicHierarchy;
+    migrationReadiness?: MigrationReadiness;
 }
 
 // =====================================================
@@ -436,6 +441,93 @@ export interface ProgramUnit {
     programUnitType: string;
     programUnitText: string;
     decodedText: string;
+}
+
+// =====================================================
+// Program Unit Intelligence
+// =====================================================
+
+export interface Parameter {
+    name: string;
+    mode: 'IN' | 'OUT' | 'IN OUT';
+    dataType: string;
+    defaultValue?: string;
+}
+
+export interface ProgramUnitEnriched extends ProgramUnit {
+    parameters: Parameter[];
+    returnType?: string;
+    lineCount: number;
+    dependencies: string[]; // Program units/functions this calls
+    calledBy: string[]; // Triggers/program units that call this
+    isMainFunction: boolean;
+    mainFunctionReason?: string;
+    businessResponsibility?: string;
+    callTreeDepth: number; // How deep in the call tree (0 = entry point)
+    classification: LogicCategory;
+    impactScore: 'high' | 'medium' | 'low';
+    complexity: number; // 1-10 scale
+    riskFlags: string[];
+}
+
+export type LogicCategory =
+    | 'UI Logic'
+    | 'Validation Logic'
+    | 'Business Logic'
+    | 'Transaction Logic'
+    | 'Integration Logic'
+    | 'Security/Access Control'
+    | 'Utility/Helper'
+    | 'Unknown';
+
+export interface TriggerAnalysis extends Trigger {
+    calledProgramUnits: string[];
+    directDML: boolean;
+    logicDepth: 'simple' | 'moderate' | 'complex';
+    responsibility: string; // Plain English description
+    impactScore: 'high' | 'medium' | 'low';
+}
+
+export interface FormLogicHierarchy {
+    entryPoints: HierarchyNode[];
+    coreBusinessControllers: HierarchyNode[];
+    supportingUtilities: HierarchyNode[];
+    uiGlueLogic: HierarchyNode[];
+}
+
+export interface HierarchyNode {
+    type: 'trigger' | 'program-unit';
+    name: string;
+    description: string;
+    classification: LogicCategory;
+    impactScore: 'high' | 'medium' | 'low';
+    children: HierarchyNode[];
+    callDepth: number;
+}
+
+export interface MigrationReadiness {
+    overallComplexity: number; // 1-10 scale
+    totalProgramUnits: number;
+    highComplexityUnits: number;
+    mediumComplexityUnits: number;
+    lowComplexityUnits: number;
+    criticalRisks: RiskItem[];
+    priorityList: PriorityItem[];
+    estimatedEffort: string; // e.g., "80-120 hours"
+}
+
+export interface RiskItem {
+    unitName: string;
+    riskType: 'tight-ui-coupling' | 'heavy-trigger-logic' | 'forms-builtins' | 'direct-dml-in-trigger' | 'complex-logic';
+    description: string;
+    severity: 'high' | 'medium' | 'low';
+}
+
+export interface PriorityItem {
+    unitName: string;
+    priority: number; // 1 = highest
+    reason: string;
+    estimatedHours: number;
 }
 
 export interface Relation {

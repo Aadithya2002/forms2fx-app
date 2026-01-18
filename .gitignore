@@ -24,3 +24,4 @@ npm-debug.log*
 # Sample data files (project-specific, optional)
 *.xml
 *.sql
+.vercel

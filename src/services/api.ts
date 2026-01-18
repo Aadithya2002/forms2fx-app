@@ -5,6 +5,10 @@ import type {
 import {
     analyzeUILayout, buildBlockUIContext, buildItemUILayout, buildCanvasApexLayout
 } from './uiLayoutEngine';
+import { analyzeProgramUnit, identifyMainFunctions } from './programUnitAnalyzer';
+import { analyzeTrigger } from './triggerAnalyzer';
+import { buildFormLogicHierarchy } from './hierarchyBuilder';
+import { analyzeMigrationReadiness } from './migrationReadiness';
 
 const api = axios.create({
     baseURL: '/api',
@@ -72,6 +76,35 @@ export async function parseXmlInBrowser(xmlContent: string): Promise<FormModule>
         ...canvas,
         apexLayout: buildCanvasApexLayout(canvas, result)
     }));
+
+    // =====================================================
+    // Intelligence Layer: Analyze program units and triggers
+    // =====================================================
+
+    // Enrich program units with metadata
+    const enrichedProgramUnits = result.programUnits.map((unit) =>
+        analyzeProgramUnit(unit, result.programUnits, result.triggers)
+    );
+
+    // Identify main functions
+    identifyMainFunctions(enrichedProgramUnits);
+
+    // Analyze triggers with call information
+    const analyzedTriggers = result.triggers.map((trigger) =>
+        analyzeTrigger(trigger, enrichedProgramUnits)
+    );
+
+    // Build form logic hierarchy
+    const formLogicHierarchy = buildFormLogicHierarchy(analyzedTriggers, enrichedProgramUnits);
+
+    // Calculate migration readiness
+    const migrationReadiness = analyzeMigrationReadiness(enrichedProgramUnits);
+
+    // Attach intelligence data to form module
+    result.programUnitsEnriched = enrichedProgramUnits;
+    result.triggersAnalyzed = analyzedTriggers;
+    result.formLogicHierarchy = formLogicHierarchy;
+    result.migrationReadiness = migrationReadiness;
 
     return result;
 }

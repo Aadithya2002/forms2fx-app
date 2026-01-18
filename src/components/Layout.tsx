@@ -15,8 +15,14 @@ import {
     FileText,
     Menu,
     X,
+    Package,
+    Network,
+    Gauge,
+    Key,
+    Sparkles,
 } from 'lucide-react';
 import { useAnalysisStore } from '../store/analysisStore';
+import { hasApiKey } from '../services/geminiService';
 
 const mainNavItems = [
     { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -27,7 +33,8 @@ export default function Layout() {
     const location = useLocation();
     const [collapsed, setCollapsed] = useState(false);
     const [mobileOpen, setMobileOpen] = useState(false);
-    const { currentFile, currentAnalysis } = useAnalysisStore();
+    const { currentFile, currentAnalysis, setShowApiKeyModal } = useAnalysisStore();
+    const apiKeyConfigured = hasApiKey();
 
     const isAnalysisRoute = location.pathname.includes('/analysis/');
 
@@ -63,6 +70,21 @@ export default function Layout() {
                 to: `/analysis/${currentFile.id}/triggers`,
                 icon: Zap,
                 label: 'Triggers',
+            },
+            {
+                to: `/analysis/${currentFile.id}/program-units`,
+                icon: Package,
+                label: 'Program Units',
+            },
+            {
+                to: `/analysis/${currentFile.id}/business-logic`,
+                icon: Network,
+                label: 'Business Logic',
+            },
+            {
+                to: `/analysis/${currentFile.id}/migration-readiness`,
+                icon: Gauge,
+                label: 'Migration Ready',
             },
             {
                 to: `/analysis/${currentFile.id}/mapping`,
@@ -161,6 +183,33 @@ export default function Layout() {
                     </div>
                 )}
             </nav>
+
+            {/* AI Settings */}
+            <div className={`p-3 border-t border-slate-200 ${collapsed ? 'flex justify-center' : ''}`}>
+                <button
+                    onClick={() => setShowApiKeyModal(true)}
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-colors
+                        ${apiKeyConfigured
+                            ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                            : 'bg-violet-50 text-violet-700 hover:bg-violet-100'
+                        }
+                        ${collapsed ? 'justify-center' : ''}
+                    `}
+                    title={collapsed ? (apiKeyConfigured ? 'AI Ready' : 'Configure API Key') : undefined}
+                >
+                    {apiKeyConfigured ? (
+                        <>
+                            <Sparkles className="w-4 h-4" />
+                            {!collapsed && <span className="text-sm font-medium">AI Ready</span>}
+                        </>
+                    ) : (
+                        <>
+                            <Key className="w-4 h-4" />
+                            {!collapsed && <span className="text-sm font-medium">Setup AI Key</span>}
+                        </>
+                    )}
+                </button>
+            </div>
 
             {/* Footer */}
             {!collapsed && (

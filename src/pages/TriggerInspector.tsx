@@ -1,18 +1,42 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Zap, Filter, Search, ChevronDown, ChevronRight, FileCode2, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Zap, Filter, Search, ChevronDown, ChevronRight, FileCode2, AlertTriangle, CheckCircle, Settings } from 'lucide-react';
 import { useAnalysisStore } from '../store/analysisStore';
 import StatusBadge, { TriggerTypeBadge } from '../components/StatusBadge';
 import CodeBlock from '../components/CodeBlock';
+import GenerateApexButton from '../components/GenerateApexButton';
+import GenerationPreview from '../components/GenerationPreview';
 import type { Trigger } from '../types/forms';
+import type { GenerationProgress } from '../types/generation';
+import { generateForTrigger } from '../services/generationOrchestrator';
+import { buildKnowledgeContext, createEmptyContext } from '../services/knowledgeBuilder';
+import { hasApiKey } from '../services/geminiService';
 
 export default function TriggerInspector() {
     const { fileId } = useParams();
-    const { currentAnalysis, files, selectFile } = useAnalysisStore();
+    const {
+        currentAnalysis,
+        files,
+        selectFile,
+        knowledgeContext,
+        setKnowledgeContext,
+        generatedCode,
+        generatedExplanations,
+        setGeneratedCode,
+        setShowApiKeyModal
+    } = useAnalysisStore();
     const [searchQuery, setSearchQuery] = useState('');
     const [filterType, setFilterType] = useState<string>('all');
     const [expandedTrigger, setExpandedTrigger] = useState<string | null>(null);
+
+    // Build knowledge context on load if not already set
+    useEffect(() => {
+        if (currentAnalysis && !knowledgeContext) {
+            const context = buildKnowledgeContext(currentAnalysis);
+            setKnowledgeContext(context);
+        }
+    }, [currentAnalysis, knowledgeContext, setKnowledgeContext]);
 
     useEffect(() => {
         if (!currentAnalysis && fileId) {
@@ -48,6 +72,40 @@ export default function TriggerInspector() {
         return groups;
     }, [allTriggers]);
 
+    // Create generation handler for a trigger
+    const createGenerateHandler = useCallback((trigger: Trigger & { source: string }) => {
+        return async (onProgress: (progress: GenerationProgress) => void) => {
+            const context = knowledgeContext || createEmptyContext(currentAnalysis?.name || 'FORM');
+
+            // Parse source to get block/item names
+            let blockName: string | undefined;
+            let itemName: string | undefined;
+            if (trigger.source.startsWith('Block: ')) {
+                blockName = trigger.source.replace('Block: ', '');
+            } else if (trigger.source.startsWith('Item: ')) {
+                const parts = trigger.source.replace('Item: ', '').split('.');
+                blockName = parts[0];
+                itemName = parts[1];
+            }
+
+            const result = await generateForTrigger(
+                trigger.name,
+                trigger.decodedText,
+                context,
+                blockName,
+                itemName,
+                onProgress
+            );
+
+            return {
+                success: result.success,
+                code: result.generatedCode,
+                explanation: result.explanation,
+                error: result.error
+            };
+        };
+    }, [knowledgeContext, currentAnalysis]);
+
     if (!currentAnalysis) {
         return (
             <div className="flex-1 flex items-center justify-center">
@@ -63,15 +121,38 @@ export default function TriggerInspector() {
     return (
         <div className="flex-1 overflow-auto">
             <header className="bg-white border-b border-slate-200 px-8 py-6">
-                <div className="flex items-center gap-3 text-sm text-slate-500 mb-2">
-                    <Link to="/" className="hover:text-primary-600">Dashboard</Link>
-                    <span>/</span>
-                    <Link to={`/analysis/${fileId}`} className="hover:text-primary-600">{currentAnalysis.name}</Link>
-                    <span>/</span>
-                    <span className="text-slate-900">Triggers</span>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <div className="flex items-center gap-3 text-sm text-slate-500 mb-2">
+                            <Link to="/" className="hover:text-primary-600">Dashboard</Link>
+                            <span>/</span>
+                            <Link to={`/analysis/${fileId}`} className="hover:text-primary-600">{currentAnalysis.name}</Link>
+                            <span>/</span>
+                            <span className="text-slate-900">Triggers</span>
+                        </div>
+                        <h1 className="text-2xl font-bold text-slate-900">Trigger Inspector</h1>
+                        <p className="mt-1 text-sm text-slate-500">
+                            Analyze {allTriggers.length} triggers •
+                            {hasApiKey() ? (
+                                <span className="text-emerald-600 ml-1">AI Generation Ready</span>
+                            ) : (
+                                <button
+                                    onClick={() => setShowApiKeyModal(true)}
+                                    className="text-violet-600 hover:text-violet-700 ml-1"
+                                >
+                                    Configure API Key for AI Generation
+                                </button>
+                            )}
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => setShowApiKeyModal(true)}
+                        className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                        title="API Settings"
+                    >
+                        <Settings className="w-5 h-5 text-slate-500" />
+                    </button>
                 </div>
-                <h1 className="text-2xl font-bold text-slate-900">Trigger Inspector</h1>
-                <p className="mt-1 text-sm text-slate-500">Analyze {allTriggers.length} triggers</p>
             </header>
 
             <div className="p-8">
@@ -103,6 +184,18 @@ export default function TriggerInspector() {
                     {filteredTriggers.map((trigger, index) => {
                         const key = `${trigger.source}-${trigger.name}`;
                         const isExpanded = expandedTrigger === key;
+                        const existingGeneratedCode = generatedCode[key];
+                        const existingExplanation = generatedExplanations[key];
+
+                        // Create handler that saves both code and explanation
+                        const handleGenerate = async (onProgress: (progress: GenerationProgress) => void) => {
+                            const result = await createGenerateHandler(trigger)(onProgress);
+                            if (result.success) {
+                                setGeneratedCode(key, result.code, result.explanation);
+                            }
+                            return result;
+                        };
+
                         return (
                             <motion.div key={key} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.02 }} className="card overflow-hidden">
                                 <button onClick={() => setExpandedTrigger(isExpanded ? null : key)} className="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50">
@@ -116,6 +209,9 @@ export default function TriggerInspector() {
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-3">
+                                        {existingGeneratedCode && (
+                                            <StatusBadge variant="success">AI Generated</StatusBadge>
+                                        )}
                                         <TriggerTypeBadge type={trigger.classification} />
                                         <StatusBadge variant={trigger.apexTarget.supportLevel === 'full' ? 'success' : trigger.apexTarget.supportLevel === 'partial' ? 'warning' : 'error'}>{trigger.apexTarget.type}</StatusBadge>
                                         {isExpanded ? <ChevronDown className="w-5 h-5 text-slate-400" /> : <ChevronRight className="w-5 h-5 text-slate-400" />}
@@ -144,8 +240,37 @@ export default function TriggerInspector() {
                                                 ))}
                                             </ul>
                                         </div>
-                                        {trigger.decodedText && <CodeBlock code={trigger.decodedText} title="Original PL/SQL" maxHeight={250} />}
-                                        {trigger.apexTarget.code && <CodeBlock code={trigger.apexTarget.code} title="APEX Code" maxHeight={250} />}
+
+                                        {/* Original code and Generate button */}
+                                        {trigger.decodedText && (
+                                            <div className="space-y-4">
+                                                <div className="flex items-center justify-between">
+                                                    <h4 className="text-sm font-semibold text-slate-900">Original PL/SQL</h4>
+                                                    <GenerateApexButton
+                                                        code={trigger.decodedText}
+                                                        name={key}
+                                                        onGenerate={handleGenerate}
+                                                    />
+                                                </div>
+                                                <CodeBlock code={trigger.decodedText} title="Original PL/SQL" maxHeight={250} />
+                                            </div>
+                                        )}
+
+                                        {/* Show generated code if exists */}
+                                        {existingGeneratedCode && (
+                                            <GenerationPreview
+                                                originalCode={trigger.decodedText}
+                                                generatedCode={existingGeneratedCode}
+                                                originalTitle={`Trigger: ${trigger.name}`}
+                                                generatedTitle="Generated APEX Code"
+                                                explanation={existingExplanation}
+                                            />
+                                        )}
+
+                                        {/* Fallback to static APEX code if no AI generated */}
+                                        {!existingGeneratedCode && trigger.apexTarget.code && (
+                                            <CodeBlock code={trigger.apexTarget.code} title="Suggested APEX Code" maxHeight={250} />
+                                        )}
                                     </div>
                                 )}
                             </motion.div>

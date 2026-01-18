@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { FormModule, UploadedFile, Block, Trigger, Canvas } from '../types/forms';
+import type { FormKnowledgeContext, GenerationProgress } from '../types/generation';
 
 interface AnalysisStore {
     // State
@@ -13,6 +14,13 @@ interface AnalysisStore {
     isLoading: boolean;
     error: string | null;
 
+    // Generation state
+    knowledgeContext: FormKnowledgeContext | null;
+    generationProgress: GenerationProgress | null;
+    generatedCode: Record<string, string>; // Map of trigger/unit name -> generated code
+    generatedExplanations: Record<string, string>; // Map of trigger/unit name -> explanation
+    showApiKeyModal: boolean;
+
     // File actions
     addFile: (file: UploadedFile) => void;
     updateFile: (id: string, updates: Partial<UploadedFile>) => void;
@@ -24,6 +32,13 @@ interface AnalysisStore {
     selectBlock: (block: Block | null) => void;
     selectTrigger: (trigger: Trigger | null) => void;
     selectCanvas: (canvas: Canvas | null) => void;
+
+    // Generation actions
+    setKnowledgeContext: (context: FormKnowledgeContext | null) => void;
+    setGenerationProgress: (progress: GenerationProgress | null) => void;
+    setGeneratedCode: (name: string, code: string, explanation?: string) => void;
+    clearGeneratedCode: (name: string) => void;
+    setShowApiKeyModal: (show: boolean) => void;
 
     // UI actions
     toggleSidebar: () => void;
@@ -44,6 +59,11 @@ const initialState = {
     sidebarCollapsed: false,
     isLoading: false,
     error: null,
+    knowledgeContext: null,
+    generationProgress: null,
+    generatedCode: {},
+    generatedExplanations: {},
+    showApiKeyModal: false,
 };
 
 export const useAnalysisStore = create<AnalysisStore>((set) => ({
@@ -79,6 +99,9 @@ export const useAnalysisStore = create<AnalysisStore>((set) => ({
             selectedBlock: null,
             selectedTrigger: null,
             selectedCanvas: null,
+            knowledgeContext: null,
+            generatedCode: {},
+            generatedExplanations: {},
         }),
 
     setAnalysis: (analysis) =>
@@ -101,6 +124,33 @@ export const useAnalysisStore = create<AnalysisStore>((set) => ({
     selectCanvas: (canvas) =>
         set({ selectedCanvas: canvas }),
 
+    // Generation actions
+    setKnowledgeContext: (context) =>
+        set({ knowledgeContext: context }),
+
+    setGenerationProgress: (progress) =>
+        set({ generationProgress: progress }),
+
+    setGeneratedCode: (name, code, explanation) =>
+        set((state) => ({
+            generatedCode: { ...state.generatedCode, [name]: code },
+            generatedExplanations: explanation
+                ? { ...state.generatedExplanations, [name]: explanation }
+                : state.generatedExplanations
+        })),
+
+    clearGeneratedCode: (name) =>
+        set((state) => {
+            const newCode = { ...state.generatedCode };
+            const newExplanations = { ...state.generatedExplanations };
+            delete newCode[name];
+            delete newExplanations[name];
+            return { generatedCode: newCode, generatedExplanations: newExplanations };
+        }),
+
+    setShowApiKeyModal: (show) =>
+        set({ showApiKeyModal: show }),
+
     toggleSidebar: () =>
         set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
 
@@ -113,3 +163,4 @@ export const useAnalysisStore = create<AnalysisStore>((set) => ({
     reset: () =>
         set(initialState),
 }));
+
