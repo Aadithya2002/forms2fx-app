@@ -190,8 +190,31 @@ export default function TriggerInspector() {
                         // Create handler that saves both code and explanation
                         const handleGenerate = async (onProgress: (progress: GenerationProgress) => void) => {
                             const result = await createGenerateHandler(trigger)(onProgress);
-                            if (result.success) {
+                            if (result.success && fileId) {
                                 setGeneratedCode(key, result.code, result.explanation);
+
+                                // Save to Firestore
+                                try {
+                                    // Construct Unit ID based on trigger source info to match saveFormUnits logic
+                                    let unitId = '';
+                                    if (trigger.source === 'Form') {
+                                        unitId = `${fileId}_trigger_form_${trigger.name}`;
+                                    } else if (trigger.source.startsWith('Block: ')) {
+                                        const blockName = trigger.source.replace('Block: ', '');
+                                        unitId = `${fileId}_trigger_block_${blockName}_${trigger.name}`;
+                                    } else if (trigger.source.startsWith('Item: ')) {
+                                        const parts = trigger.source.replace('Item: ', '').split('.');
+                                        unitId = `${fileId}_trigger_item_${parts[0]}_${parts[1]}_${trigger.name}`;
+                                    }
+
+                                    if (unitId) {
+                                        // Dynamic import or passed prop? better to import
+                                        const { saveGeneratedCode } = await import('../services/firestoreService');
+                                        await saveGeneratedCode(fileId, unitId, result.code, result.explanation);
+                                    }
+                                } catch (err) {
+                                    console.error('Failed to save generated code to Firestore:', err);
+                                }
                             }
                             return result;
                         };
@@ -250,6 +273,8 @@ export default function TriggerInspector() {
                                                         code={trigger.decodedText}
                                                         name={key}
                                                         onGenerate={handleGenerate}
+                                                        label={existingGeneratedCode ? "Regenerate AI Code" : "Generate APEX Code"}
+                                                        variant={existingGeneratedCode ? "outline" : "default"}
                                                     />
                                                 </div>
                                                 <CodeBlock code={trigger.decodedText} title="Original PL/SQL" maxHeight={250} />
@@ -265,11 +290,6 @@ export default function TriggerInspector() {
                                                 generatedTitle="Generated APEX Code"
                                                 explanation={existingExplanation}
                                             />
-                                        )}
-
-                                        {/* Fallback to static APEX code if no AI generated */}
-                                        {!existingGeneratedCode && trigger.apexTarget.code && (
-                                            <CodeBlock code={trigger.apexTarget.code} title="Suggested APEX Code" maxHeight={250} />
                                         )}
                                     </div>
                                 )}

@@ -4,9 +4,8 @@ import { X, Key, Loader2, Check, AlertCircle, ShieldCheck } from 'lucide-react';
 import { testApiKey } from '../services/geminiService';
 import { useAnalysisStore } from '../store/analysisStore';
 import { useAuth } from '../contexts/AuthContext';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../services/firebase';
-import { encryptApiKey, decryptApiKey } from '../services/cryptoService';
 
 export default function ApiKeyModal() {
     const { showApiKeyModal, setShowApiKeyModal, apiKey, setApiKey } = useAnalysisStore();
@@ -27,15 +26,10 @@ export default function ApiKeyModal() {
                 const fetchKey = async () => {
                     try {
                         const userDoc = await getDoc(doc(db, 'users', user.uid));
-                        if (userDoc.exists() && userDoc.data().settings?.encryptedApiKey) {
-                            const decrypted = await decryptApiKey(
-                                userDoc.data().settings.encryptedApiKey,
-                                user.uid
-                            );
-                            if (decrypted) {
-                                setKey(decrypted);
-                                setApiKey(decrypted);
-                            }
+                        if (userDoc.exists() && userDoc.data().settings?.apiKey) {
+                            const storedKey = userDoc.data().settings.apiKey;
+                            setKey(storedKey);
+                            setApiKey(storedKey);
                         }
                     } catch (err) {
                         console.error('Error fetching API key:', err);
@@ -65,12 +59,11 @@ export default function ApiKeyModal() {
             // Update store
             setApiKey(key.trim());
 
-            // Encrypt and save to Firestore
-            const encryptedKey = await encryptApiKey(key.trim(), user.uid);
+            // Save plain text to Firestore
             await setDoc(doc(db, 'users', user.uid), {
                 settings: {
-                    encryptedApiKey: encryptedKey,
-                    updatedAt: new Date()
+                    apiKey: key.trim(),
+                    updatedAt: serverTimestamp()
                 }
             }, { merge: true });
 
@@ -192,8 +185,8 @@ export default function ApiKeyModal() {
                         </button>
                         <button
                             onClick={handleSave}
-                            disabled={!key.trim()}
-                            className="px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={!key.trim() || saving}
+                            className="px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                         >
                             {saving ? (
                                 <>

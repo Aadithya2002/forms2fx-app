@@ -3,7 +3,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { useAnalysisStore } from '../store/analysisStore';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
-import { decryptApiKey } from '../services/cryptoService';
 
 export function useApiKeySync() {
     const { user } = useAuth();
@@ -21,13 +20,10 @@ export function useApiKeySync() {
             const syncKey = async () => {
                 try {
                     const userDoc = await getDoc(doc(db, 'users', user.uid));
-                    if (userDoc.exists() && userDoc.data().settings?.encryptedApiKey) {
-                        const decrypted = await decryptApiKey(
-                            userDoc.data().settings.encryptedApiKey,
-                            user.uid
-                        );
-                        if (decrypted) {
-                            setApiKey(decrypted);
+                    if (userDoc.exists() && userDoc.data().settings?.apiKey) {
+                        const storedKey = userDoc.data().settings.apiKey;
+                        if (storedKey) {
+                            setApiKey(storedKey);
                         }
                     }
                 } catch (error) {

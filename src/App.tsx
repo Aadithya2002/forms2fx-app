@@ -14,6 +14,9 @@ import PageDesignerPreview from './pages/PageDesignerPreview';
 import ProgramUnitsPage from './pages/ProgramUnitsPage';
 import BusinessLogicMapPage from './pages/BusinessLogicMapPage';
 import MigrationReadinessPage from './pages/MigrationReadinessPage';
+import GeneratedCodePage from './pages/GeneratedCodePage';
+import StepByStepPage from './pages/StepByStepPage';
+import CustomPLBExplorerPage from './pages/CustomPLBExplorerPage';
 import LoginPage from './pages/LoginPage';
 import ApiKeyModal from './components/ApiKeyModal';
 
@@ -47,6 +50,9 @@ function App() {
                         <Route path="analysis/:fileId/program-units" element={<ProgramUnitsPage />} />
                         <Route path="analysis/:fileId/business-logic" element={<BusinessLogicMapPage />} />
                         <Route path="analysis/:fileId/migration-readiness" element={<MigrationReadinessPage />} />
+                        <Route path="analysis/:fileId/generated" element={<GeneratedCodePage />} />
+                        <Route path="analysis/:fileId/step-by-step" element={<StepByStepPage />} />
+                        <Route path="analysis/:fileId/plb-explorer" element={<CustomPLBExplorerPage />} />
                         <Route path="*" element={<Navigate to="/" replace />} />
                     </Route>
                 </Routes>

@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { FileCode2, ArrowRight, AlertTriangle, Copy, Check, BookOpen, ChevronDown, ChevronUp } from 'lucide-react';
+import { FileCode2, ArrowRight, AlertTriangle, Copy, Check, BookOpen, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import CodeBlock from './CodeBlock';
 
@@ -31,10 +31,23 @@ export default function GenerationPreview({
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="space-y-4"
+            className="space-y-4 mt-6"
         >
+            {/* AI Generated Header */}
+            <div className="bg-gradient-to-r from-violet-600 to-purple-600 rounded-t-lg px-6 py-4 flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                    <Sparkles className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                        AI Generated APEX Code
+                    </h3>
+                    <p className="text-violet-200 text-sm">Original PL/SQL converted to APEX</p>
+                </div>
+            </div>
+
             {/* Draft Warning Banner */}
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3 -mt-4 rounded-t-none">
                 <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
                 <div>
                     <h4 className="font-semibold text-amber-800">Draft - Review Required</h4>

@@ -11,11 +11,14 @@ import {
 } from 'lucide-react';
 import { useAnalysisStore } from '../store/analysisStore';
 import { parseXmlInBrowser } from '../services/api';
+import { saveForm } from '../services/firestoreService';
+import { useAuth } from '../contexts/AuthContext';
 import type { UploadedFile } from '../types/forms';
 
 export default function UploadPage() {
     const navigate = useNavigate();
-    const { addFile, updateFile, selectFile } = useAnalysisStore();
+    const { addFile, updateFile, selectFile, removeFile } = useAnalysisStore();
+    const { user } = useAuth();
     const [isDragging, setIsDragging] = useState(false);
     const [uploadState, setUploadState] = useState<{
         status: 'idle' | 'uploading' | 'parsing' | 'success' | 'error';
@@ -98,29 +101,56 @@ export default function UploadPage() {
 
             setUploadState({
                 status: 'parsing',
-                progress: 90,
-                message: 'Generating APEX mappings...',
+                progress: 80,
+                message: 'Saving to cloud...',
                 fileId,
             });
 
-            // Update file with parsed data
-            updateFile(fileId, {
+            // Save to Firestore - use the returned ID as the source of truth
+            let savedId = fileId;
+            if (user) {
+                savedId = await saveForm(user.uid, uploadedFile, formModule);
+            } else {
+                throw new Error('You must be logged in to upload files');
+            }
+
+            setUploadState({
+                status: 'parsing',
+                progress: 90,
+                message: 'Generating APEX mappings...',
+                fileId: savedId, // Use the real Firestore ID
+            });
+
+            // Update file with parsed data and real ID
+            // We need to remove the temp file and add the real one to store? 
+            // Or just update the ID? Store updateFile uses ID to find.
+            // Better to add the "saved" file entry
+
+            const finalFile: UploadedFile = {
+                ...uploadedFile,
+                id: savedId, // Update ID
                 status: 'parsed',
                 formModule,
-            });
+            };
+
+            // Remove temp, add real - actually addFile will append. 
+            // We should just use the proper ID from start if possible? 
+            // No, saveForm generates ID. 
+            // Let's just fix the store state.
+            removeFile(fileId);
+            addFile(finalFile);
 
             setUploadState({
                 status: 'success',
                 progress: 100,
                 message: `Successfully parsed ${formModule.name}`,
-                fileId,
+                fileId: savedId,
             });
 
             // Auto-navigate after a brief delay
             setTimeout(() => {
-                const updatedFile = { ...uploadedFile, status: 'parsed' as const, formModule };
-                selectFile(updatedFile);
-                navigate(`/analysis/${fileId}`);
+                selectFile(finalFile);
+                navigate(`/analysis/${savedId}`);
             }, 1500);
         } catch (error) {
             console.error('Parse error:', error);

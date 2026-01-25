@@ -4,13 +4,22 @@
 // Gemini API Service
 // =====================================================
 
+import { useAnalysisStore } from '../store/analysisStore';
+
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
 /**
- * Check if API key exists (checked via store)
+ * Check if API key exists (checked via Zustand store)
  */
 export function hasApiKey(): boolean {
-    return !!localStorage.getItem('gemini_api_key');
+    return !!useAnalysisStore.getState().apiKey;
+}
+
+/**
+ * Get the API key from the store
+ */
+export function getApiKey(): string | null {
+    return useAnalysisStore.getState().apiKey;
 }
 
 /**

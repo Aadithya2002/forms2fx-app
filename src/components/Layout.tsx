@@ -20,6 +20,7 @@ import {
     Gauge,
     Key,
     Sparkles,
+    ListChecks,
     LogOut,
     User,
 } from 'lucide-react';
@@ -27,6 +28,7 @@ import { useAnalysisStore } from '../store/analysisStore';
 import { hasApiKey } from '../services/geminiService';
 import { useAuth } from '../contexts/AuthContext';
 import { useApiKeySync } from '../hooks/useApiKeySync';
+import { useFormSync } from '../hooks/useFormSync';
 
 const mainNavItems = [
     { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -34,7 +36,8 @@ const mainNavItems = [
 ];
 
 export default function Layout() {
-    useApiKeySync(); // Sync API key from Firestore
+    useApiKeySync(); // Sync API key
+    useFormSync();   // Sync Forms & Code
     const location = useLocation();
     const [collapsed, setCollapsed] = useState(false);
     const [mobileOpen, setMobileOpen] = useState(false);
@@ -57,10 +60,15 @@ export default function Layout() {
                 label: 'Overview',
             },
             {
+                to: `/analysis/${currentFile.id}/step-by-step`,
+                icon: ListChecks,
+                label: 'Step by Step',
+                highlight: true,
+            },
+            {
                 to: `/analysis/${currentFile.id}/designer`,
                 icon: MonitorPlay,
                 label: 'Page Designer',
-                highlight: true,
             },
             {
                 to: `/analysis/${currentFile.id}/layout`,
@@ -81,6 +89,18 @@ export default function Layout() {
                 to: `/analysis/${currentFile.id}/program-units`,
                 icon: Package,
                 label: 'Program Units',
+            },
+            {
+                to: `/analysis/${currentFile.id}/plb-explorer`,
+                icon: Database,
+                label: 'Custom PLB Explorer',
+                highlight: true,
+            },
+            {
+                to: `/analysis/${currentFile.id}/generated`,
+                icon: Sparkles,
+                label: 'Generated Code',
+                highlight: true,
             },
             {
                 to: `/analysis/${currentFile.id}/business-logic`,

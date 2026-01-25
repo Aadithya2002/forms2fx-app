@@ -274,14 +274,25 @@ interface ProgramUnitItemProps {
 
 function ProgramUnitItem({ unit, isExpanded, onToggle, generatedCode: existingGeneratedCode, generatedExplanation: existingExplanation, onGenerate }: ProgramUnitItemProps) {
     const { setGeneratedCode } = useAnalysisStore();
+    const { fileId } = useParams();
 
     const handleGenerate = useCallback(async (onProgress: (progress: GenerationProgress) => void) => {
         const result = await onGenerate(onProgress);
-        if (result.success) {
-            setGeneratedCode(`unit-${unit.name}`, result.code, result.explanation);
+        if (result.success && fileId) {
+            const key = `unit-${unit.name}`;
+            setGeneratedCode(key, result.code, result.explanation);
+
+            // Save to Firestore for persistence - use same key format as store
+            try {
+                const { saveGeneratedCode } = await import('../services/firestoreService');
+                await saveGeneratedCode(fileId, key, result.code, result.explanation);
+            } catch (err) {
+                console.error('Failed to save generated code to Firestore:', err);
+            }
         }
         return result;
-    }, [onGenerate, unit.name, setGeneratedCode]);
+    }, [onGenerate, unit.name, setGeneratedCode, fileId]);
+
 
     return (
         <div>

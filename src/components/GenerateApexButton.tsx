@@ -10,13 +10,17 @@ interface GenerateApexButtonProps {
     name: string;
     onGenerate: (onProgress: (progress: GenerationProgress) => void) => Promise<{ success: boolean; code: string; error?: string }>;
     disabled?: boolean;
+    label?: string;
+    variant?: 'default' | 'outline';
 }
 
 export default function GenerateApexButton({
     code,
     name,
     onGenerate,
-    disabled = false
+    disabled = false,
+    label = 'Generate APEX Code',
+    variant = 'default'
 }: GenerateApexButtonProps) {
     const { setShowApiKeyModal, setGeneratedCode, setGenerationProgress } = useAnalysisStore();
     const [isGenerating, setIsGenerating] = useState(false);
@@ -80,7 +84,9 @@ export default function GenerateApexButton({
                     transition-all duration-200
                     ${isGenerating
                         ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                        : 'bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700 shadow-md hover:shadow-lg'
+                        : variant === 'outline'
+                            ? 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 hover:text-slate-900'
+                            : 'bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700 shadow-md hover:shadow-lg'
                     }
                     disabled:opacity-50 disabled:cursor-not-allowed
                 `}
@@ -92,8 +98,8 @@ export default function GenerateApexButton({
                     </>
                 ) : (
                     <>
-                        <Sparkles className="w-4 h-4" />
-                        <span>Generate APEX Code</span>
+                        <Sparkles className={`w-4 h-4 ${variant === 'outline' ? 'text-violet-600' : 'text-white'}`} />
+                        <span>{label}</span>
                     </>
                 )}
             </button>

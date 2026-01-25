@@ -215,6 +215,7 @@ export async function getGeneratedCode(
 
 /**
  * Save generated code for a unit
+ * Creates both the unit metadata doc and the generated code doc
  */
 export async function saveGeneratedCode(
     formId: string,
@@ -223,8 +224,24 @@ export async function saveGeneratedCode(
     explanation?: string
 ): Promise<void> {
     const unitId = sanitizeUnitKey(unitKey);
-    const generatedRef = doc(db, 'forms', formId, 'units', unitId, 'generated', 'latest');
 
+    // Parse scope and name from the key (format: "scope-name" e.g., "unit-PROCESS_RECORD" or "Form-PRE-FORM")
+    const firstDash = unitKey.indexOf('-');
+    const scope = firstDash > 0 ? unitKey.substring(0, firstDash) : 'unknown';
+    const name = firstDash > 0 ? unitKey.substring(firstDash + 1) : unitKey;
+
+    // First, create/update the parent unit document with scope and name
+    const unitRef = doc(db, 'forms', formId, 'units', unitId);
+    await setDoc(unitRef, {
+        unitId,
+        formId,
+        scope,
+        name,
+        updatedAt: serverTimestamp()
+    }, { merge: true });
+
+    // Then save the generated code
+    const generatedRef = doc(db, 'forms', formId, 'units', unitId, 'generated', 'latest');
     await setDoc(generatedRef, {
         unitId,
         formId,
@@ -243,22 +260,35 @@ export async function saveGeneratedCode(
 
 /**
  * Get all generated code for a form (for loading on page load)
+ * Optimized: Uses parallel fetches instead of sequential for speed
  */
 export async function getAllGeneratedCode(formId: string): Promise<Record<string, { code: string; explanation?: string }>> {
     const result: Record<string, { code: string; explanation?: string }> = {};
 
     const unitsSnapshot = await getDocs(collection(db, 'forms', formId, 'units'));
 
-    for (const unitDoc of unitsSnapshot.docs) {
+    // Parallel fetch all generated code docs
+    const fetchPromises = unitsSnapshot.docs.map(async (unitDoc) => {
         const generatedRef = doc(db, 'forms', formId, 'units', unitDoc.id, 'generated', 'latest');
         const genSnap = await getDoc(generatedRef);
 
         if (genSnap.exists()) {
             const data = genSnap.data();
-            result[unitDoc.id] = {
-                code: data.apexCode,
-                explanation: data.explanation
-            };
+            const unitData = unitDoc.data();
+            if (unitData.name && unitData.scope) {
+                // Construct key to match TriggerInspector format: `${source}-${name}`
+                const key = `${unitData.scope}-${unitData.name}`;
+                return { key, code: data.apexCode, explanation: data.explanation };
+            }
+        }
+        return null;
+    });
+
+    const results = await Promise.all(fetchPromises);
+
+    for (const item of results) {
+        if (item) {
+            result[item.key] = { code: item.code, explanation: item.explanation };
         }
     }
 
