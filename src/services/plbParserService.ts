@@ -165,10 +165,11 @@ function findUnitEnd(
         // Check for simple "END;" that closes a BEGIN
         // But we need to distinguish from END IF;, END LOOP;, END CASE;
 
-        // Count different END types
-        const endIfCount = (cleanLine.match(/\bEND\s+IF\b/g) || []).length;
-        const endLoopCount = (cleanLine.match(/\bEND\s+LOOP\b/g) || []).length;
-        const endCaseCount = (cleanLine.match(/\bEND\s+CASE\b/g) || []).length;
+        // Count different END types (used for logic below)
+        const _endIfCount = (cleanLine.match(/\bEND\s+IF\b/g) || []).length;
+        const _endLoopCount = (cleanLine.match(/\bEND\s+LOOP\b/g) || []).length;
+        const _endCaseCount = (cleanLine.match(/\bEND\s+CASE\b/g) || []).length;
+        void _endIfCount; void _endLoopCount; void _endCaseCount; // Suppress unused warnings
 
         // Count "END;" or "END name;" (which closes BEGIN)
         // Pattern: END followed by optional identifier, then semicolon

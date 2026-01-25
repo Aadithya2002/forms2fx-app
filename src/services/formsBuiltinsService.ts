@@ -186,7 +186,6 @@ export function commentOutBuiltins(code: string): {
     for (let i = 0; i < lines.length; i++) {
         let line = lines[i];
         const lineNumber = i + 1;
-        let wasCommented = false;
 
         // Check each Forms built-in
         for (const builtin of FORMS_BUILTINS) {
@@ -212,7 +211,6 @@ export function commentOutBuiltins(code: string): {
                         originalLine: originalLine.trim(),
                         reason: getBuiltinReason(builtin)
                     });
-                    wasCommented = true;
                     break;
                 }
             }
